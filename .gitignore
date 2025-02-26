@@ -1,0 +1,23 @@
+# Виртуальные окружения
+__pycache__/
+venv/
+env/
+
+# Дистрибутивные файлы
+dist/
+build/
+*.egg-info/
+
+# Кэши и временные файлы
+*.pyc
+*.log
+*.sqlite3
+
+# Конфигурационные файлы
+.config/
+.settings/
+.env
+
+# Файлы IDE
+.vscode/
+.idea/
