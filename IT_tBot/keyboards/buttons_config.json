@@ -1,0 +1,28 @@
+{
+  "buttons": [
+    {
+      "text": "Help",
+      "callback": "help",
+      "answer": "Sorry, I can’t help you with that yet. But you can ask /AltCode",
+      "category": "general"
+    },
+    {
+      "text": "Help me please",
+      "callback": "you_fucking_slave",
+      "answer": "Shut up you fucking slave. Motherfucker.",
+      "category": "agro" 
+    },
+    {
+      "text": "Info",
+      "callback": "info",
+      "answer": "Here is some information for you.",
+      "category": "general"
+    },
+    {
+      "text": "Settings",
+      "callback": "settings",
+      "answer": "Here are your settings.",
+      "category": "settings"
+    }
+  ]
+}
