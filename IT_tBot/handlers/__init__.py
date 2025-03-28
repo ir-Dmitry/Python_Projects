@@ -1,3 +1,4 @@
-from .common_commands import register_common_commands_handler
+from .common_button import register_callback_handler, handle_callback
 from .common import register_common_handler
-from .callback import register_callback_handlers
+
+# from .callback import register_callback_handlers

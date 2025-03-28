@@ -10,7 +10,7 @@
       "text": "Help me please",
       "callback": "you_fucking_slave",
       "answer": "Shut up you fucking slave. Motherfucker.",
-      "category": "agro" 
+      "category": "agro"
     },
     {
       "text": "Info",
@@ -23,6 +23,20 @@
       "callback": "settings",
       "answer": "Here are your settings.",
       "category": "settings"
+    },
+    {
+      "text": "Back",
+      "callback": "back",
+      "answer": "Here are your settings.",
+      "category": "back",
+      "categories": ["next"]
+    },
+    {
+      "text": "Next",
+      "callback": "next",
+      "answer": "Here are your settings.",
+      "category": "next",
+      "categories": ["back"]
     }
   ]
 }

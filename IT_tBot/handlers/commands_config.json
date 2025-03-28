@@ -1,0 +1,29 @@
+{
+  "commands": {
+    "start": {
+      "text": "/start",
+      "description": "Начать работу с ботом",
+      "response_type": "keyboard",
+      "keyboard_type": "default",
+      "category": "general"
+    },
+    "altcode": {
+      "text": "/altcode",
+      "description": "Показать таблицу AltCode",
+      "response_type": "file",
+      "filename": "AltCode.txt",
+      "parse_mode": "MarkdownV2",
+      "syntax_highlighting": "python"
+    },
+    "settings": {
+      "text": "/settings",
+      "description": "Настройки пока не доступны",
+      "response_type": "text"
+    },
+    "help": {
+      "text": "/help",
+      "description": "Получить справку",
+      "response_type": "text"
+    }
+  }
+}
