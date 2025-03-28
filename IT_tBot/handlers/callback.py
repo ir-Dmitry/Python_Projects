@@ -1,8 +1,8 @@
 from aiogram import types
 from aiogram.dispatcher import Dispatcher
-from keyboards import all_keyboards
+from keyboards import keyboard_builder
 
-buttons_config = all_keyboards.load_buttons_config("./keyboards/buttons_config.json")
+buttons_config = keyboard_builder.load_buttons_config("./keyboards/buttons_config.json")
 
 
 async def handle_callback(callback_query: types.CallbackQuery):

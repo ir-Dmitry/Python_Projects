@@ -1,15 +1,14 @@
 from aiogram import types
 from aiogram.dispatcher import Dispatcher
 import json
-from keyboards import create_keyboard_from_file, load_buttons_config
 import logging
 from .common_button import send_keyboard
+from config_loader import ConfigLoader
 
 logger = logging.getLogger(__name__)
 
-# --- Константы и пути ---
-COMMANDS_CONFIG_PATH = "./handlers/commands_config.json"
-BUTTONS_CONFIG_PATH = "./keyboards/buttons_config.json"
+# --- Инициализация ConfigLoader ---
+config_loader = ConfigLoader()
 
 
 # --- Вспомогательные функции ---
@@ -71,7 +70,7 @@ def create_command_handler(command_config: dict):
 
 
 def register_common_handler(dp: Dispatcher):
-    commands = load_commands_config(COMMANDS_CONFIG_PATH)
+    commands = config_loader.load_commands_config()
 
     for command_name, command_config in commands.items():
         handler = create_command_handler(command_config)

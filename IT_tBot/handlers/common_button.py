@@ -1,18 +1,19 @@
 from aiogram import types
 from aiogram.dispatcher import Dispatcher
-from keyboards import create_keyboard_from_file, load_buttons_config
+from keyboards import create_keyboard_from_file
 import logging
+from config_loader import ConfigLoader
 
 logger = logging.getLogger(__name__)
 
-# --- Константы и пути ---
-BUTTONS_CONFIG_PATH = "./keyboards/buttons_config.json"
+# --- Инициализация ConfigLoader ---
+config_loader = ConfigLoader()
 
 
 async def send_keyboard(message: types.Message, description: str, category: str):
     """Отправляет клавиатуру с описанием."""
     try:
-        buttons_config = load_buttons_config(BUTTONS_CONFIG_PATH)
+        buttons_config = config_loader.load_buttons_config()
         keyboard = create_keyboard_from_file(
             buttons_config, category, 1
         )  # Assuming row_width=1
@@ -39,7 +40,7 @@ async def handle_callback(
         row_width: Ширина ряда кнопок (если нужно создать клавиатуру).
     """
     callback_data = callback_query.data
-    buttons_config = load_buttons_config(BUTTONS_CONFIG_PATH)
+    buttons_config = config_loader.load_buttons_config()
 
     for button in buttons_config:
         if button["callback"] == callback_data:

@@ -1,7 +1,7 @@
 # Виртуальные окружения
-__pycache__/
-venv/
-env/
+**/__pycache__/
+**/venv/
+**/env/
 
 # Дистрибутивные файлы
 dist/
@@ -14,9 +14,9 @@ build/
 *.sqlite3
 
 # Конфигурационные файлы
-.config/
-.settings/
-.env
+**/config/
+**/settings/
+**/config/.env
 
 # Файлы IDE
 .vscode/

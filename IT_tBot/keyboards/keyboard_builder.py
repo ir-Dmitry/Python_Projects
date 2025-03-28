@@ -2,11 +2,6 @@ import json
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 
-def load_buttons_config(path: str) -> list[dict]:
-    with open(path, "r", encoding="utf-8") as file:
-        return json.load(file)["buttons"]
-
-
 def create_keyboard(
     buttons: list[tuple[str, str]], row_width: int = 2
 ) -> InlineKeyboardMarkup:
