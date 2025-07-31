@@ -3,3 +3,7 @@ flask==2.1.0
 aiogram==2.24
 requests
 python-dotenv
+
+# для okato-oktmo
+pandas
+xlsxwriter

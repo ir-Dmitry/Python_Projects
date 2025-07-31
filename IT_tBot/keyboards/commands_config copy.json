@@ -1,0 +1,47 @@
+{
+  "command": {
+    "start": {
+      "text": "/start",
+      "description": "Начать работу с ботом",
+      "response_type": "keyboard",
+      "keyboard_type": "default",
+      "category": "general"
+    },
+    "scripts": {
+      "text": "/scripts",
+      "description": "Список скриптов для запуска",
+      "response_type": "keyboard",
+      "keyboard_type": "default",
+      "category": "scripts"
+    },
+    "sections": {
+      "text": "/sections",
+      "description": "Чтобы получить справку по секциям файла",
+      "response_type": "file_sections",
+      "filename": "SECTION.txt"
+    },
+    "commands": {
+      "text": "/commands",
+      "description": "Чтобы получить справку по секциям файла",
+      "response_type": "file_commands",
+      "filename": "commands_config.json"
+    },
+    "sec_": {
+      "text": "/sec_",
+      "description": "Показать секцию %s",
+      "response_type": "file_section",
+      "filename": "SECTION.txt",
+      "parse_mode": "MarkdownV2"
+    },
+    "settings": {
+      "text": "/settings",
+      "description": "Настройки пока не доступны",
+      "response_type": "text"
+    },
+    "help": {
+      "text": "/help",
+      "description": "Чтобы получить справку по специальным символам введите /simbols",
+      "response_type": "text"
+    }
+  }
+}

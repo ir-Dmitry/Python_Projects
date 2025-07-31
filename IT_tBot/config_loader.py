@@ -19,7 +19,7 @@ class ConfigLoader:
         try:
             with open(self.COMMANDS_CONFIG_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            return data["commands"]  # Assumes commands are under "commands" key
+            return data  # Assumes commands are under "commands" key
         except FileNotFoundError:
             logger.error(f"Файл конфигурации не найден: {self.COMMANDS_CONFIG_PATH}")
             return {}
@@ -33,6 +33,19 @@ class ConfigLoader:
                 f"Корневой ключ 'commands' не найден в файле: {self.COMMANDS_CONFIG_PATH}"
             )
             return {}
+
+    def save_commands_config(self, commands_data):
+        """Сохраняет конфигурацию команд в JSON файл."""
+        try:
+            with open(self.COMMANDS_CONFIG_PATH, "w", encoding="utf-8") as f:
+                json.dump(
+                    commands_data, f, indent=2, ensure_ascii=False
+                )  # Добавлен indent для читабельности
+            print(
+                f"Конфигурация команд успешно сохранена в '{self.COMMANDS_CONFIG_PATH}'."
+            )
+        except Exception as e:
+            print(f"Ошибка при сохранении конфигурации команд: {e}")
 
     def load_buttons_config(self) -> dict:
         """Загружает конфигурацию кнопок из JSON файла."""

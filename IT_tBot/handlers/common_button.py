@@ -3,11 +3,83 @@ from aiogram.dispatcher import Dispatcher
 from keyboards import create_keyboard_from_file
 import logging
 from config_loader import ConfigLoader
+import subprocess
+from typing import Union
+import os
+import importlib.util
 
 logger = logging.getLogger(__name__)
 
 # --- Инициализация ConfigLoader ---
 config_loader = ConfigLoader()
+
+
+async def execute_script(
+    script_path: str, output_type: str = "text"
+) -> Union[str, types.InputFile]:
+    """
+    Выполняет скрипт, импортируя его как модуль, и возвращает результат.
+    """
+    try:
+        module_name = os.path.splitext(os.path.basename(script_path))[
+            0
+        ]  # Get module name
+        spec = importlib.util.spec_from_file_location(
+            module_name, script_path
+        )  # Load the module
+
+        if spec is None:
+            logger.error(f"Could not load module from {script_path}")
+            return "Не удалось загрузить модуль."
+
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        # Call the main() function from the loaded module
+        try:
+            result = module.main()
+        except AttributeError:
+            logger.error(f"No 'main' function found in script: {script_path}")
+            return "В скрипте не найдена функция 'main'."
+
+        if output_type == "text":
+            if isinstance(result, str):
+                logger.info(f"Output (text): {result}")
+                return result
+            else:
+                logger.warning(
+                    f"Expected string output, but got {type(result)}.  Returning string representation."
+                )
+                return str(result)  # Convert to string if needed
+
+        elif output_type == "file":
+            if isinstance(result, str):  # Assume result is a file path
+                file_path = result.strip()
+                if not os.path.exists(file_path):
+                    logger.error(f"File not found: {file_path}")
+                    return "Файл не найден после выполнения скрипта."
+
+                try:
+                    # return types.InputFile(file_path)
+                    return file_path
+                except Exception as e:
+                    logger.exception(f"Error sending file: {e}")
+                    return f"Ошибка при отправке файла: {e}"
+            else:
+                logger.error(
+                    f"Expected file path string, but got {type(result)} for file output."
+                )
+                return "Ожидался путь к файлу, но получен другой тип данных."
+        else:
+            logger.warning(f"Unknown output type: {output_type}")
+            return "Неизвестный тип вывода."
+
+    except FileNotFoundError:
+        logger.error(f"Script '{script_path}' not found.")
+        return "Скрипт не найден."
+    except Exception as e:
+        logger.exception(f"Error executing script '{script_path}': {e}")
+        return f"Произошла ошибка при выполнении скрипта: {e}"
 
 
 async def send_keyboard(message: types.Message, description: str, category: str):
@@ -47,6 +119,9 @@ async def handle_callback(
             await callback_query.answer()
 
             try:
+
+                if button.get("response_type") == "keyboard":
+                    categories = button["categories"]
                 # If categories are provided, create a keyboard from categories
                 if categories:
                     new_keyboard = create_keyboard_from_file(
@@ -55,6 +130,34 @@ async def handle_callback(
                     await callback_query.message.answer(
                         "Выберите опцию:", reply_markup=new_keyboard
                     )
+
+                elif button.get("response_type") == "script":
+                    script_path = button["path"]
+                    output_type = button.get("output", "text")  # Default to "text"
+                    script_result = await execute_script(script_path, output_type)
+
+                    if isinstance(script_result, str) and output_type == "text":
+                        await callback_query.message.answer(script_result)  # Send text
+                    elif isinstance(script_result, str) and output_type == "file":
+                        # await callback_query.message.answer_document(
+                        #     document=script_result
+                        # )  # Send document
+                        logging.info(script_result)
+                        try:
+                            document = types.InputFile(script_result)
+                            await callback_query.message.answer_document(
+                                document=document
+                            )  # Send document
+                            os.remove(script_result)  # Delete the file
+
+                        except Exception as e:
+                            logger.exception(f"Error sending/deleting file: {e}")
+                            await callback_query.message.answer(
+                                f"Произошла ошибка при отправке или удалении файла: {e}"
+                            )
+                    else:
+                        logging.info("Чет не то")
+
                 # Otherwise, send the default answer as text (if present)
                 elif "answer" in button:
                     await callback_query.message.answer(button["answer"])
@@ -77,111 +180,3 @@ def register_callback_handler(dp: Dispatcher):
     # dp.register_callback_query_handler(handle_callback)
 
     dp.register_callback_query_handler(handle_callback, state="*")
-
-
-# Example of using handle_callback in main.py (or wherever you register handlers)
-# You would also register a message handler and use this callback handler
-# to execute a given response. For instance, here are some examples:
-
-# Inside main.py:
-# from aiogram import types
-# from aiogram.dispatcher import Dispatcher
-# import callback_handlers
-# def register_all_handlers(dp: Dispatcher):
-#     """Register all handlers."""
-#     callback_handlers.register_callback_handler(dp)
-#     #Example
-#     dp.register_callback_query_handler(lambda c: callback_handlers.handle_callback(c, categories=["general", "settings"], row_width=3), text="settings_button")
-
-
-# from aiogram import types
-# from aiogram.dispatcher import Dispatcher
-# from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-# from keyboards import all_keyboards
-# import logging
-
-# # Настройка логирования
-# # Настройка логирования в файл
-# logging.basicConfig(
-#     level=logging.INFO,  # Уровень логирования
-#     filename="bot.log",  # Имя файла для записи логов
-#     filemode="w",  # Режим записи (w - перезапись, a - добавление)
-#     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Формат записи
-# )
-# logger = logging.getLogger(__name__)
-
-
-# async def send_message_with_categories(
-#     message: types.Message, categories: list[str], row_width: int
-# ):
-#     """
-#     Отправляет сообщение с клавиатурой, созданной на основе категорий из файла конфигурации.
-
-#     Args:
-#         message: Объект Message.
-#         categories: Список категорий для фильтрации кнопок.
-#         row_width: Ширина ряда кнопок.
-#     """
-#     try:
-#         buttons_config = all_keyboards.load_buttons_config(
-#             "./keyboards/buttons_config.json"
-#         )
-#         keyboard = all_keyboards.create_keyboard_from_file(
-#             buttons_config, categories, row_width
-#         )
-
-#         await message.reply(
-#             "Welcome! I'm your EchoBot.\nHow can I assist you?",
-#             reply_markup=keyboard,
-#         )
-#     except Exception as e:
-#         logger.exception(f"Ошибка при отправке клавиатуры по категориям: {e}")
-#         await message.reply("Произошла ошибка при создании клавиатуры.")
-
-
-# async def send_file_content(
-#     message: types.Message,
-#     filename: str,
-#     parse_mode: str = "MarkdownV2",
-#     syntax_highlighting: str = "",
-# ):
-#     """
-#     Отправляет содержимое указанного файла в чат с возможностью подсветки синтаксиса.
-
-#     Args:
-#         message: Объект Message.
-#         filename: Имя файла, который нужно отправить.
-#         parse_mode: Режим разбора текста (MarkdownV2, HTML или None). По умолчанию "MarkdownV2".
-#         syntax_highlighting: Языковой идентификатор для подсветки синтаксиса (например, "python", "java").
-#                              Оставьте пустым, если подсветка не требуется.
-#     """
-#     try:
-#         with open(filename, "r", encoding="utf-8") as file:
-#             content = file.read()
-#         code_block = (
-#             f"```{syntax_highlighting}\n{content}\n```"
-#             if syntax_highlighting
-#             else f"```\n{content}\n```"
-#         )
-#         await message.answer(code_block, parse_mode=parse_mode)
-#     except FileNotFoundError:
-#         await message.answer(f"Файл {filename} не найден.")
-#         logger.warning(f"Файл {filename} не найден.")
-#     except Exception as e:
-#         logger.exception(f"Ошибка при чтении файла {filename}: {e}")
-#         await message.answer(f"Произошла ошибка при чтении файла {filename}.")
-
-
-# def register_common_commands_handler(dp: Dispatcher):
-#     dp.register_message_handler(
-#         lambda message: send_message_with_categories(
-#             message, ["general", "settings"], 2
-#         ),
-#         commands=["start"],
-#     )
-#     dp.register_message_handler(
-#         lambda message: send_file_content(
-#             message, "AltCode.txt"
-#         ),  # Добавлена подсветка синтаксиса Python
-#         commands=["AltCode"],
-#     )
