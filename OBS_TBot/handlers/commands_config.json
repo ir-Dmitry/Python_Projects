@@ -1,0 +1,81 @@
+{
+  "start": {
+    "text": "/start",
+    "info": "Команда запуска бота",
+    "description": "Здрасте-здрасте!\nЭто бот для записи на вебинар.\n — Для записи на вебинар нажмите кнопку ⬇️",
+    "response_type": "keyboard",
+    "keyboard_type": "default",
+    "category": "registration"
+  },
+  "help": {
+    "text": "/help",
+    "info": "Получение справки/помощи",
+    "description": "Здрасте-здрасте!\nЭто бот для записи на вебинар.\n — Чтобы просмотреть список доступных вебинаров введите /webinars\n — Справка: /help\n — Для просмотра спецальны команд используйте /commands",
+    "response_type": "text"
+  },
+  "commands": {
+    "text": "/commands",
+    "info": "Список всех доступных команд",
+    "response_type": "file_commands",
+    "filename": "commands_config.json"
+  },
+  "webinars": {
+    "text": "/webinars",
+    "info": "Список доступных вебинаров",
+    "response_type": "file_sections",
+    "file_sections": "",
+    "filename": "WEBINAR.txt"
+  },
+  "registration": {
+    "text": "/registration",
+    "description": "Нажмите для начала регистрации",
+    "info": "Регистрация на вебинар",
+    "response_type": "keyboard",
+    "keyboard_type": "default",
+    "category": "registration"
+  },
+  "webinar_1": {
+    "text": "/webinars",
+    "info": "Вебинар 1",
+    "response_type": "file_section",
+    "file_section": "1",
+    "filename": "WEBINAR.txt"
+  },
+  "webinar_2": {
+    "text": "/webinars",
+    "info": "Вебинар 2",
+    "response_type": "file_section",
+    "file_section": "2",
+    "filename": "WEBINAR.txt"
+  },
+  "scripts": {
+    "text": "/scripts",
+    "info": "Список скриптов для запуска",
+    "description": "Список скриптов для запуска",
+    "response_type": "keyboard",
+    "keyboard_type": "default",
+    "category": [
+      "registration",
+      "scripts"
+    ]
+  },
+  "sections": {
+    "text": "/sections",
+    "info": "Чтобы получить справку по секциям файла",
+    "response_type": "file_sections",
+    "filename": "SECTION.txt"
+  },
+  "sec_": {
+    "text": "/sec_",
+    "info": "Показать секцию %s",
+    "response_type": "file_section",
+    "filename": "SECTION.txt",
+    "parse_mode": "MarkdownV2"
+  },
+  "settings": {
+    "text": "/settings",
+    "info": "Доступные настройки",
+    "description": "Настройки пока не доступны.",
+    "response_type": "text"
+  }
+}

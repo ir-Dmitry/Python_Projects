@@ -1,0 +1,93 @@
+{
+  "buttons": [
+    {
+      "text": "Записаться на вебинар",
+      "callback": "webinar-registration",
+      "answer": "Запуск скрипта записи на вебинар.",
+      "response_type": "script",
+      "path": "./projects/webinar_registration/webinar-registration.py",
+      "output": "text",
+      "category": "registration",
+      "categories": ""
+    },
+    {
+      "text": "Help",
+      "callback": "help",
+      "answer": "Sorry, I can’t help you with that yet. But you can ask /AltCode",
+      "response_type": "text",
+      "category": "general"
+    },
+    {
+      "text": "Info",
+      "callback": "info",
+      "answer": "Here is some information for you.\nДля вывода списка всех команд введите /commands",
+      "response_type": "text",
+      "category": "general",
+      "categories": ""
+    },
+    {
+      "text": "Scripts",
+      "callback": "scripts",
+      "answer": "Here is some Python scripts for you.",
+      "response_type": "keyboard",
+      "category": "general",
+      "categories": [
+        "scripts"
+      ]
+    },
+    {
+      "text": "Help me please",
+      "callback": "you_fucking_slave",
+      "answer": "Shut up you fucking slave. Motherfucker.",
+      "response_type": "text",
+      "category": "agro"
+    },
+    {
+      "text": "Settings",
+      "callback": "settings",
+      "answer": "Here are your settings.",
+      "response_type": "text",
+      "category": "settings"
+    },
+    {
+      "text": "Back",
+      "callback": "back",
+      "answer": "Here are your settings.",
+      "response_type": "keyboard",
+      "category": "back",
+      "categories": [
+        "next"
+      ]
+    },
+    {
+      "text": "Next",
+      "callback": "next",
+      "answer": "Here are your settings.",
+      "response_type": "keyboard",
+      "category": "next",
+      "categories": [
+        "back"
+      ]
+    },
+    {
+      "text": "Запустить скрипт okato-oktmo",
+      "callback": "okato-oktmo",
+      "answer": "Запуск скрипта okato-oktmo.",
+      "response_type": "script",
+      "path": "./projects/okato_oktmo/okato-oktmo.py",
+      "output": "file",
+      "category": "scripts",
+      "categories": ""
+    },
+    {
+      "text": "Запустить скрипт other",
+      "callback": "other",
+      "answer": "Запуск скрипта other.",
+      "response_type": "script",
+      "path": "./projects/other/other.py",
+      "output": "text",
+      "category": "scripts",
+      "categories": ""
+    }
+  ]
+}
