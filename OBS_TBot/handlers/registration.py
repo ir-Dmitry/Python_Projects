@@ -1,3 +1,5 @@
+import requests
+import json
 import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import Message
@@ -21,6 +23,7 @@ load_dotenv()
 moscow_time = datetime.now(ZoneInfo("Europe/Moscow"))
 print(f"Московское время: {moscow_time}")
 
+GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyDvcZmwUWDY3CzrPCMJvCPfTprH4g9iIVOnKKSvhHGUVfbbiEMSTZEIfLjENT68aLxMQ/exec"
 
 TOKEN = BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBINAR_DATETIME = os.getenv("WEBINAR_DATETIME")
@@ -107,6 +110,53 @@ async def process_email(message: types.Message, state: FSMContext):
     await state.finish()
 
 
+def send_to_google_sheets(pers: dict):
+    """
+    Отправляет данные в Google Таблицу через Google Apps Script.
+    """
+    data = pers
+
+    print(f"📤 Отправка в Google Sheets: {data}")
+
+    try:
+        response = requests.post(
+            GOOGLE_SCRIPT_URL,
+            data=json.dumps(data),
+            headers={"Content-Type": "application/json"},
+            timeout=10,  # добавим таймаут
+        )
+
+        # 🔍 Логируем ответ
+        print(f"📝 Статус: {response.status_code}")
+        print(f"📄 Ответ: {response.text[:500]}")  # первые 500 символов
+
+        # Только если ответ — JSON
+        if response.headers.get("Content-Type", "").startswith("application/json"):
+            result = response.json()
+            if result.get("status") == "success":
+                print(f"✅ Данные отправлены: {data['full_name']}")
+            else:
+                print("❌ Ошибка в ответе скрипта:", result)
+        else:
+            print(
+                "❌ Ответ не JSON! Ожидался application/json, получен:",
+                response.headers.get("Content-Type"),
+            )
+            print("💡 Скорее всего, URL неверный или скрипт не опубликован.")
+
+    except requests.exceptions.Timeout:
+        print("❌ Таймаут подключения к Google Apps Script")
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Ошибка сети: {e}")
+    except json.JSONDecodeError:
+        print(
+            "❌ Не удалось распарсить ответ как JSON. Возможно, это HTML или пустой ответ."
+        )
+        print("💡 Проверь URL и опубликуй скрипт заново.")
+    except Exception as e:
+        print(f"❌ Непредвиденная ошибка: {e}")
+
+
 def save_registration(user_id: int, full_name: str, email: str):
     """
     Сохраняет пользователя и возвращает HTML-сообщение для отправки пользователю.
@@ -135,14 +185,16 @@ def save_registration(user_id: int, full_name: str, email: str):
         )
 
     # Добавляем нового пользователя
-    users.append(
-        {
-            "user_id": user_id,
-            "full_name": full_name,
-            "email": email,
-            "registered_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        }
-    )
+    pers = {
+        "user_id": user_id,
+        "full_name": full_name,
+        "email": email,
+        "registered_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    users.append(pers)
+
+    # 🚀 Отправляем данные в Google Таблицу
+    send_to_google_sheets(pers)
 
     try:
         with open("users.json", "w", encoding="utf-8") as f:
