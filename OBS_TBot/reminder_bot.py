@@ -19,14 +19,6 @@ TOKEN = BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = Bot(token=TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher(bot)
 
-# bot = Bot(
-#     token=TOKEN,
-#     default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-# )
-
-
-# dp = Dispatcher()
-
 
 @dp.message_handler()
 async def reminder_handler(message: types.Message):
@@ -35,9 +27,7 @@ async def reminder_handler(message: types.Message):
 
     if text.startswith("через"):
         try:
-            parts = text.split(" ", 2)
-            minutes = int(parts[1])
-            reminder_text = parts[2]
+            _, minutes, reminder_text = text.split(" ", 2)
 
             print(
                 f"[{datetime.now()}] Установлено напоминание через {minutes} минут: {reminder_text}"
@@ -46,17 +36,14 @@ async def reminder_handler(message: types.Message):
                 f"⏰ Напоминание через {minutes} мин: <b>{reminder_text}</b>"
             )
             asyncio.create_task(
-                set_reminder(message.from_user.id, minutes, reminder_text)
+                set_reminder(message.from_user.id, int(minutes), reminder_text)
             )  # <--- *60 вернул
         except Exception as e:
             print(f"[{datetime.now()}] Ошибка при обработке 'через': {e}")
 
     else:
         try:
-            parts = text.split(" ", 3)
-            date_part = parts[0]
-            time_part = parts[1]
-            reminder_text = parts[3]
+            date_part, time_part, reminder_text = text.split(" ", 2)
 
             reminder_dt = datetime.strptime(
                 f"{date_part} {time_part}", "%d.%m.%Y %H:%M"
