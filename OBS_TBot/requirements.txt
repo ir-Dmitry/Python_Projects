@@ -4,6 +4,10 @@ aiogram==2.24
 requests
 python-dotenv
 
+# Для гугл таблиц
+gspread 
+oauth2client
+
 # для okato-oktmo
 pandas
 xlsxwriter

@@ -7,6 +7,7 @@ import subprocess
 from typing import Union
 import os
 import importlib.util
+from .registration import cmd_reg, process_full_name, Registration, process_email
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +131,9 @@ async def handle_callback(
                     await callback_query.message.answer(
                         "Выберите опцию:", reply_markup=new_keyboard
                     )
+
+                elif button.get("response_type") == "reg":
+                    await cmd_reg(callback_query.message)
 
                 elif button.get("response_type") == "script":
                     script_path = button["path"]

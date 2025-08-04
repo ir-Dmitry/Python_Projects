@@ -34,9 +34,12 @@ async def send_text_from_description(message: types.Message, description: str):
 
 async def echo(message: types.Message):
     """Обработчик для эхо-сообщений."""
-    await message.answer(
-        "Неизвестная команда. Введите /start."
-    )  # Сообщение без клавиатуры.
+    # await message.answer(
+    #     "Неизвестная команда. Введите /start."
+    # )  # Сообщение без клавиатуры.
+
+    tmp_msg = "Неизвестная команда, если вы хотите зарегестрироваться на вебинар - нажмите кнопку ниже ⬇️"
+    await send_keyboard(message, tmp_msg, "registration")
 
 
 def create_command_handler(command_config: dict):

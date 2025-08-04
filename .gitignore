@@ -25,6 +25,8 @@ build/
 # //////////////////////////////////ДЛЯ OBS_tBot//////////////////////////////////
 
 # Byte-compiled / optimized / DLL files
+OBS_TBot/users.json
+OBS_TBot/credentials.json
 __pycache__/
 *.py[cod]
 *$py.class

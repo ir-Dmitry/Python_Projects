@@ -13,12 +13,22 @@ from dotenv import load_dotenv
 import logging
 import json
 from typing import List
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 load_dotenv()
+# Путь к твоему JSON-файлу
+CREDENTIALS_FILE = "credentials.json"
+
+# Области доступа (не меняй)
+scope = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/drive",
+]
 
 moscow_time = datetime.now(ZoneInfo("Europe/Moscow"))
 print(f"Московское время: {moscow_time}")
@@ -116,45 +126,23 @@ def send_to_google_sheets(pers: dict):
     """
     data = pers
 
-    print(f"📤 Отправка в Google Sheets: {data}")
+    # Авторизация
+    credentials = ServiceAccountCredentials.from_json_keyfile_name(
+        CREDENTIALS_FILE, scope
+    )
+    client = gspread.authorize(credentials)
 
-    try:
-        response = requests.post(
-            GOOGLE_SCRIPT_URL,
-            data=json.dumps(data),
-            headers={"Content-Type": "application/json"},
-            timeout=10,  # добавим таймаут
-        )
+    # Открываем таблицу по названию
+    spreadsheet = client.open("Регистрация на вебинар")  # ← замени на реальное имя
 
-        # 🔍 Логируем ответ
-        print(f"📝 Статус: {response.status_code}")
-        print(f"📄 Ответ: {response.text[:500]}")  # первые 500 символов
+    # Выбираем лист (например, "Лист1")
+    worksheet = spreadsheet.sheet1  # или: spreadsheet.worksheet("Лист1")
 
-        # Только если ответ — JSON
-        if response.headers.get("Content-Type", "").startswith("application/json"):
-            result = response.json()
-            if result.get("status") == "success":
-                print(f"✅ Данные отправлены: {data['full_name']}")
-            else:
-                print("❌ Ошибка в ответе скрипта:", result)
-        else:
-            print(
-                "❌ Ответ не JSON! Ожидался application/json, получен:",
-                response.headers.get("Content-Type"),
-            )
-            print("💡 Скорее всего, URL неверный или скрипт не опубликован.")
+    # Прочитать все строки
+    # data = worksheet.get_all_records()
+    # print(data)
 
-    except requests.exceptions.Timeout:
-        print("❌ Таймаут подключения к Google Apps Script")
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Ошибка сети: {e}")
-    except json.JSONDecodeError:
-        print(
-            "❌ Не удалось распарсить ответ как JSON. Возможно, это HTML или пустой ответ."
-        )
-        print("💡 Проверь URL и опубликуй скрипт заново.")
-    except Exception as e:
-        print(f"❌ Непредвиденная ошибка: {e}")
+    worksheet.append_row([*data.values()])
 
 
 def save_registration(user_id: int, full_name: str, email: str):
@@ -197,13 +185,14 @@ def save_registration(user_id: int, full_name: str, email: str):
     send_to_google_sheets(pers)
 
     try:
+        tmp_time = get_webinar_time()
         with open("users.json", "w", encoding="utf-8") as f:
             json.dump(users, f, ensure_ascii=False, indent=2)
         return (
             "✅ <b>Регистрация завершена!</b>\n\n"
             f"📌 ФИО: {full_name}\n"
             f"✉️ Email: {email}\n\n"
-            "🔔 Напоминание о вебинаре придет вовремя."
+            f"🗓 Дата вебинара: {tmp_time.date()}. \n🕰 Время: {tmp_time.strftime('%H:%M')}.\nНапоминание о вебинаре придет вовремя."
         )
     except Exception as e:
         print(f"Ошибка записи в файл: {e}")
@@ -246,49 +235,100 @@ def load_user_ids_from_json(filename: str = "users.json") -> List[int]:
 
 async def schedule_webinar_reminder(bot: Bot):
     """
-    Ждёт до времени вебинара и рассылает напоминание ВСЕМ зарегистрированным.
-    user_id берётся из users.json.
+    Запускает три напоминания до вебинара:
+    - за 2 дня
+    - за 2 часа
+    - за 10 минут
     """
     webinar_time = get_webinar_time()
-
-    first_message = webinar_time - timedelta(minutes=1440)
-    second_message = webinar_time - timedelta(minutes=120)
-    last_message = webinar_time - timedelta(minutes=10)
-
     now = datetime.now(ZoneInfo(TIMEZONE))
 
-    if webinar_time <= now:
-        print("⚠️ Вебинар уже прошёл. Напоминание не требуется.")
+    # Определяем временные точки напоминаний days/hours/minutes
+    reminders = [
+        {
+            "time": webinar_time - timedelta(days=2),
+            "text": (
+                "📅 <b>Напоминание: вебинар через 2 дня!</b>\n\n"
+                "Подготовьте вопросы, зарядитесь энергией!\n"
+            ),
+            "label": "за 2 дня",
+        },
+        {
+            "time": webinar_time - timedelta(hours=2),
+            "text": (
+                "⏰ <b>Внимание: вебинар начнётся через 2 часа!</b>\n\n"
+                "Не пропустите — уже скоро!\n"
+            ),
+            "label": "за 2 часа",
+        },
+        {
+            "time": webinar_time - timedelta(minutes=10),
+            "text": (
+                "🔥 <b>Вебинар скоро начнется!</b>\n\n"
+                "Уже через 10 минут мы стартуем!\n"
+            ),
+            "label": "за 10 минут",
+        },
+        {
+            "time": webinar_time - timedelta(seconds=10),
+            "text": (
+                "🔥 <b>Вебинар начинается СЕЙЧАС!</b>\n\n"
+                "👉 Присоединяйтесь: https://example.com/webinar"
+            ),
+            "label": "за 10 минут",
+        },
+    ]
+
+    # Фильтруем только будущие напоминания
+    future_reminders = [r for r in reminders if r["time"] > now]
+
+    if not future_reminders:
+        print("⚠️ Все напоминания уже в прошлом.")
+        # await bot.send_message(
+        #     chat_id=1127371080,
+        #     text="⚠️ Все напоминания уже в прошлом.",
+        #     parse_mode="HTML",
+        # )
         return
 
-    delay = (webinar_time - now).total_seconds()
-    print(f"⏳ Напоминание запланировано через {delay:.0f} секунд ({webinar_time})")
+    for reminder in future_reminders:
+        send_time = reminder["time"]
+        delay = (send_time - now).total_seconds()
 
-    # Ждём
-    await asyncio.sleep(delay)
+        msg = f"⏳ Напоминание {reminder['label']} запланировано на {send_time} (через {delay:.0f} сек)"
 
-    # После задержки — читаем user_id из файла
-    user_ids = load_user_ids_from_json()
+        print(msg)
+        # await bot.send_message(
+        #     chat_id=1127371080,
+        #     text=msg,
+        #     parse_mode="HTML",
+        # )
+        await asyncio.sleep(delay)
 
-    if not user_ids:
-        print("📭 Нет зарегистрированных пользователей для рассылки.")
-        return
+        user_ids = load_user_ids_from_json()
+        if not user_ids:
+            print("📭 Нет зарегистрированных пользователей.")
+            continue
 
-    print(f"📨 Начинаем рассылку напоминания {len(user_ids)} пользователям...")
+        msg = f"📨 Рассылка {reminder['label']} для {len(user_ids)} пользователей..."
+        # await bot.send_message(
+        #     chat_id=1127371080,
+        #     text=msg,
+        #     parse_mode="HTML",
+        # )
+        print(msg)
+        for user_id in user_ids:
+            try:
+                await bot.send_message(
+                    chat_id=user_id, text=reminder["text"], parse_mode="HTML"
+                )
+                print(f"✅ Отправлено: {user_id}")
+            except Exception as e:
+                print(f"❌ Ошибка для {user_id}: {e}")
+            await asyncio.sleep(0.05)  # анти-спам
 
-    # Рассылка
-    for user_id in user_ids:
-        try:
-            await bot.send_message(
-                chat_id=user_id,
-                text="🔔 Вебинар начинается СЕЙЧАС! АЭАЭАЭА! Быстро блять!!!\n\n"
-                "👉 Присоединяйтесь: https://example.com/webinar",
-                parse_mode="HTML",
-            )
-            print(f"✅ Напоминание отправлено: {user_id}")
-        except Exception as e:
-            print(f"❌ Не удалось отправить {user_id}: {e}")
-        await asyncio.sleep(0.05)  # анти-спам задержка
+        # Обновляем текущее время после сна
+        now = datetime.now(ZoneInfo(TIMEZONE))
 
 
 async def on_startup_reg(dp):  # ← параметр — dp (диспетчер)

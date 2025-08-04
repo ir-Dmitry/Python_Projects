@@ -2,6 +2,14 @@
   "start": {
     "text": "/start",
     "info": "Команда запуска бота",
+    "description": "Здрасте-здрасте!\nЭто бот для записи на вебинар.\n — Для записи на вебинар нажмите кнопку ниже ⬇️",
+    "response_type": "keyboard",
+    "keyboard_type": "default",
+    "category": "registration"
+  },
+  "starts": {
+    "text": "/starts",
+    "info": "Команда запуска бота",
     "description": "Здрасте-здрасте!\nЭто бот для записи на вебинар.\n — Для записи на вебинар нажмите /reg",
     "response_type": "text"
   },
