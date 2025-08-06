@@ -1,8 +1,7 @@
 # handlers/__init__.py
-
-from .common_button import register_callback_handler, handle_callback
+from .reminder import on_startup_reg
+from .common_button import register_callback_handler
 from .common import register_common_handler, on_startup_common
-from .registration import on_startup_reg
 
 
 async def on_startup(dp):

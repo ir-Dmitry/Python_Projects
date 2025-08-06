@@ -1,6 +1,7 @@
+# main.py
 import logging
-from aiogram import executor
 from create_bot import dp
+from aiogram import executor
 from handlers import register_all_handlers, on_startup
 
 

@@ -1,0 +1,12 @@
+services:
+  obs-tbot:
+    build: .  # Собираем образ из текущей директории
+    image: obs-telegram-bot-image
+    container_name: telegram-bot
+    restart: unless-stopped
+    env_file:
+      - .env  # <-- вот это лучше, чем вручную environment
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "8080:8080"  # если у тебя есть веб-интерфейс или webhook

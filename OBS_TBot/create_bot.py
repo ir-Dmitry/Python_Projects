@@ -1,13 +1,14 @@
+# create_bot.py
 import os
 from aiogram import Bot, Dispatcher
-from dotenv import load_dotenv
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from dotenv import load_dotenv
 
 load_dotenv()
 
-API_TOKEN = BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 # ——— Хранилище и бот ———
 storage = MemoryStorage()
 
-bot = Bot(token=API_TOKEN)
+bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(bot, storage=storage)

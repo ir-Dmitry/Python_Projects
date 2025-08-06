@@ -1,15 +1,17 @@
-import asyncio
-from aiogram import types
-from aiogram.dispatcher import Dispatcher
+# handlers/common.py
+import os
+import re
 import json
 import logging
-from .common_button import send_keyboard
-import re
-
-# from .registration import schedule_webinar_reminder
-from config_loader import ConfigLoader
+import asyncio
+from aiogram import types
+from datetime import datetime
 from aiogram.types import ParseMode
-from aiogram.utils.markdown import escape_md
+from config_loader import ConfigLoader
+from aiogram.dispatcher import Dispatcher
+from .file_reader import load_jsons
+from .common_button import send_keyboard
+from .reminder import stop_reminder, start_reminder
 from .common_file import (  # Import the functions from file_utils.py
     send_file_section,
     send_sections_list,
@@ -127,6 +129,33 @@ async def delete_command_handler(message: types.Message):
         await message.reply(f"Произошла ошибка при обработке команды: {e}")
 
 
+async def remove_all_registrations(message: types.Message):
+    """Обработчик команды /remove_all_registrations для очистки списка зарегистрированных пользователей."""
+    try:
+        # Загружаем текущих пользователей
+        users = load_jsons("data/users.json")
+
+        if not users:
+            await message.reply("📭 Список пользователей уже пуст.")
+            return
+
+        # Очищаем список пользователей
+        users.clear()
+
+        # Сохраняем изменения в файл
+        with open("data/users.json", "w", encoding="utf-8") as f:
+            json.dump(users, f, ensure_ascii=False, indent=2)
+
+        # Подтверждаем успешное выполнение
+        await message.reply(
+            "✅ Список зарегистрированных пользователей успешно очищен."
+        )
+
+    except Exception as e:
+        logger.exception(f"Ошибка в обработчике команды /remove_all_registrations: {e}")
+        await message.reply(f"❌ Произошла ошибка при очистке списка: {e}")
+
+
 async def create_new_command(message: types.Message):
     """Обработчик команды /create_command."""
     try:
@@ -206,6 +235,114 @@ async def on_startup_common(dp: Dispatcher):
     print("✅ Бот запущен и готов к работе.")
 
 
+async def update_webinar_link(message: types.Message):
+    """Обработчик команды /update_webinar_link для изменения ссылки на вебинар."""
+
+    try:
+        # Получаем новую ссылку из текста команды
+        new_link = message.get_args().strip()
+
+        # Проверка на пустое значение
+        if not new_link:
+            await message.reply(
+                "❌ Пожалуйста, укажите ссылку. Пример: `/update_webinar_link https://example.com/webinar`"
+            )
+            return
+
+        # Заменяем значение переменной в файле .env
+        with open(".env", "r", encoding="utf-8") as file:
+            lines = file.readlines()
+
+        with open(".env", "w", encoding="utf-8") as file:
+            found = False
+            for line in lines:
+                if line.startswith("WEBINAR_LINK="):
+                    file.write(f'WEBINAR_LINK="{new_link}"\n')
+                    found = True
+                else:
+                    file.write(line)
+            if not found:
+                file.write(f'WEBINAR_LINK="{new_link}"\n')  # Добавляем, если не было
+
+        # Обновляем переменную окружения
+        os.environ["WEBINAR_LINK"] = new_link
+
+        # Перезапускаем напоминание
+        await stop_reminder()
+        await start_reminder(message.bot)
+
+        await message.reply(
+            f"✅ Ссылка на вебинар успешно обновлена:\n{new_link}",
+            parse_mode=ParseMode.MARKDOWN,
+        )
+
+    except Exception as e:
+        await message.reply(f"❌ Произошла ошибка при обновлении ссылки: {e}")
+
+
+async def update_webinar_datetime(message: types.Message):
+    """Обработчик команды /update_webinar_datetime для изменения даты и времени вебинара."""
+
+    try:
+        # Получаем новое время из текста команды
+        new_datetime_str = message.get_args().strip()
+
+        # Проверка на пустое значение
+        if not new_datetime_str:
+            await message.reply(
+                "❌ Пожалуйста, укажите дату и время в формате 'YYYY-MM-DD HH:MM:SS'. Пример: `/update_webinar_datetime 2025-08-06 12:00:00`"
+            )
+            return
+
+        # Проверка на правильность формата даты
+        try:
+            new_webinar_datetime = datetime.strptime(
+                new_datetime_str, "%Y-%m-%d %H:%M:%S"
+            )
+        except ValueError:
+            await message.reply(
+                "❌ Неверный формат даты и времени. Используйте формат 'YYYY-MM-DD HH:MM:SS'."
+            )
+            return
+
+        # Заменяем значение переменной в файле .env
+        with open(".env", "r") as file:
+            lines = file.readlines()
+
+        # Открываем файл для записи
+        with open(".env", "w") as file:
+            for line in lines:
+                if line.startswith("WEBINAR_DATETIME="):
+                    # Заменяем старое значение на новое
+                    file.write(
+                        f"""WEBINAR_DATETIME="{new_webinar_datetime.strftime('%Y-%m-%d %H:%M:%S')}"\n"""
+                    )
+                else:
+                    file.write(line)
+
+        # Обновляем переменную окружения
+        os.environ["WEBINAR_DATETIME"] = new_webinar_datetime.strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+        # Перезапуск напоминания
+        await stop_reminder()
+        await start_reminder(message.bot)
+
+        # Подтверждение успешного обновления
+        await message.reply(
+            f"✅ Дата и время вебинара успешно обновлены на: {new_webinar_datetime.strftime('%Y-%m-%d %H:%M:%S')}",
+            parse_mode=ParseMode.MARKDOWN,
+        )
+
+    except Exception as e:
+        await message.reply(f"❌ Произошла ошибка при обновлении даты и времени: {e}")
+
+
+async def stop_reminder_command(message: types.Message):
+    await stop_reminder()
+    await message.reply("❌ Напоминание остановлено.")
+
+
 def register_common_handler(dp: Dispatcher):
     commands = config_loader.load_commands_config()
 
@@ -227,6 +364,15 @@ def register_common_handler(dp: Dispatcher):
     )
     dp.register_message_handler(process_email, state=Registration.waiting_for_email)
 
+    dp.register_message_handler(
+        remove_all_registrations, commands=["remove_all_registrations"]
+    )
+    dp.register_message_handler(
+        update_webinar_datetime, commands=["update_webinar_datetime"]
+    )
+    dp.register_message_handler(update_webinar_link, commands=["update_webinar_link"])
+
+    dp.register_message_handler(stop_reminder_command, commands=["stop_reminder"])
     dp.register_message_handler(create_new_command, commands=["create_command"])
     dp.register_message_handler(delete_command_handler, commands=["delete_command"])
     dp.register_message_handler(echo)

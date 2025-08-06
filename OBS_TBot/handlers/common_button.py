@@ -1,13 +1,13 @@
-from aiogram import types
-from aiogram.dispatcher import Dispatcher
-from keyboards import create_keyboard_from_file
-import logging
-from config_loader import ConfigLoader
-import subprocess
-from typing import Union
+# handlers/common_button.py
 import os
+import logging
 import importlib.util
-from .registration import cmd_reg, process_full_name, Registration, process_email
+from typing import Union
+from aiogram import types
+from config_loader import ConfigLoader
+from aiogram.dispatcher import Dispatcher
+from .registration import cmd_reg
+from keyboards import create_keyboard_from_file
 
 logger = logging.getLogger(__name__)
 
