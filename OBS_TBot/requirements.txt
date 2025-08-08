@@ -2,15 +2,19 @@ flask==2.1.0
 aiogram==2.24
 requests
 python-dotenv
+
+# pygsheets
+google-auth
+tzdata
+gspread
+
+
 # pytelegrambotapi==4.0.0
 
-# Для гугл таблиц
+# Для гугл таблиц 
 # gspread 
 # oauth2client
 # google-api-python-client
-gspread
-google-auth
-
 # для okato-oktmo
 # pandas
 # xlsxwriter

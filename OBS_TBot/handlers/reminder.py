@@ -3,7 +3,7 @@ import asyncio
 from aiogram import Bot
 from datetime import datetime, timedelta
 from .file_reader import load_jsons
-from .file_reader import load_jsons, get_webinar_time, get_timezone
+from .file_reader import load_jsons, get_webinar_time, get_timezone, get_webinar_link
 
 active_tasks = {}
 
@@ -60,10 +60,21 @@ async def schedule_webinar_reminder(bot: Bot):
                 f"📨 Рассылка {reminder['label']} для {len(user_ids)} пользователей..."
             )
 
+            if reminder["last"] == True:
+                print("Ссылка: ", get_webinar_link())
+            else:
+                print("Пусто")
+
             for user_id in user_ids:
                 try:
                     await bot.send_message(
-                        chat_id=user_id, text=reminder["text"], parse_mode="HTML"
+                        chat_id=user_id,
+                        text=(
+                            reminder["text"] + get_webinar_link()
+                            if reminder["last"] == True
+                            else ""
+                        ),
+                        parse_mode="HTML",
                     )
                     print(f"✅ Отправлено: {user_id}")
                 except Exception as e:

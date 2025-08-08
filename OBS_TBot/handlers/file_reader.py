@@ -13,8 +13,21 @@ def get_timezone() -> ZoneInfo:
     load_dotenv()  # загружаем .env при каждом вызове
     tz_name = os.getenv("TIMEZONE")
     if not tz_name:
-        raise ValueError("TIMEZONE не указана в .env")
+        print(ValueError("TIMEZONE не указана в .env"))
+        return "Europe/Moscow"
     return ZoneInfo(tz_name)
+
+
+def get_webinar_link():
+    """
+    Возвращает объект временной зоны из переменной окружения WEBINAR_LINK.
+    """
+    load_dotenv()  # загружаем .env при каждом вызове
+    link_name = os.getenv("WEBINAR_LINK")
+    if not link_name:
+        print(ValueError("WEBINAR_LINK не указана в .env"))
+        return "https://example.com"
+    return link_name
 
 
 def get_webinar_time() -> datetime:
@@ -24,7 +37,8 @@ def get_webinar_time() -> datetime:
     load_dotenv()  # загружаем .env при каждом вызове
     dt_str = os.getenv("WEBINAR_DATETIME")
     if not dt_str:
-        raise ValueError("WEBINAR_DATETIME не указана в .env")
+        print(ValueError("WEBINAR_DATETIME не указана в .env"))
+        return "2025-08-08 11:28:00"
 
     try:
         naive_dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
