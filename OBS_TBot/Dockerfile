@@ -1,16 +1,3 @@
-# FROM python:3.9-slim
-
-# WORKDIR /app
-
-# COPY . /app
-
-# RUN pip install --no-cache-dir -r requirements.txt
-
-# EXPOSE 8080
-
-# CMD ["python", "main.py"]
-
-# Этап сборки зависимостей
 FROM python:3.9-slim AS builder
 
 WORKDIR /app
@@ -34,9 +21,9 @@ COPY . .
 RUN apt-get purge -y tzdata && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
 # Задаём переменную окружения для московского часового пояса
-ENV TZ=Europe/Moscow
+# ENV TZ=Europe/Moscow
 
-EXPOSE 8080
+# EXPOSE 8080
 
 CMD ["python", "main.py"]
 

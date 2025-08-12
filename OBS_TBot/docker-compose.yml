@@ -1,7 +1,7 @@
 services:
-  obs-tbot:
+  obt-tbot:
     build: .  # Собираем образ из текущей директории
-    image: obs-telegram-bot-image
+    image: obt-telegram-bot-image
     container_name: telegram-bot
     restart: unless-stopped
     env_file:

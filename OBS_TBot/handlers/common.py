@@ -48,6 +48,7 @@ def create_command_handler(command_config: dict):
     """Фабрика для создания обработчиков на основе command_config."""
 
     async def handler(message: types.Message):
+        await cmd_start(message)
         try:
             if command_config["response_type"] == "text":
                 await send_text_from_description(message, command_config["description"])
@@ -131,6 +132,9 @@ async def delete_command_handler(message: types.Message):
 
 async def remove_all_registrations(message: types.Message):
     """Обработчик команды /remove_all_registrations для очистки списка зарегистрированных пользователей."""
+
+    if not await admin_only(message):
+        return
     try:
         # Загружаем текущих пользователей
         users = load_jsons("data/users.json")
@@ -238,6 +242,8 @@ async def on_startup_common(dp: Dispatcher):
 async def update_webinar_link(message: types.Message):
     """Обработчик команды /update_webinar_link для изменения ссылки на вебинар."""
 
+    if not await admin_only(message):
+        return
     try:
         # Получаем новую ссылку из текста команды
         new_link = message.get_args().strip()
@@ -283,6 +289,8 @@ async def update_webinar_link(message: types.Message):
 async def update_webinar_datetime(message: types.Message):
     """Обработчик команды /update_webinar_datetime для изменения даты и времени вебинара."""
 
+    if not await admin_only(message):
+        return
     try:
         # Получаем новое время из текста команды
         new_datetime_str = message.get_args().strip()
@@ -339,11 +347,206 @@ async def update_webinar_datetime(message: types.Message):
 
 
 async def stop_reminder_command(message: types.Message):
+    if not await admin_only(message):
+        return
     await stop_reminder()
     await message.reply("❌ Напоминание остановлено.")
 
 
+ALL_USERS_FILE = "data/all_users.json"
+ADMINS_FILE = "data/admins.json"
+
+
+# Создаём файл, если его нет
+def init_users_file():
+    if not os.path.exists(ALL_USERS_FILE):
+        with open(ALL_USERS_FILE, "w", encoding="utf-8") as f:
+            json.dump([], f, ensure_ascii=False, indent=4)
+
+
+# Читаем список всех пользователей
+def load_all_users():
+    try:
+        with open(ALL_USERS_FILE, "r", encoding="utf-8") as f:
+            # Если файл пуст, возвращаем пустой список
+            data = f.read().strip()
+            if not data:
+                return []
+            return json.loads(data)
+    # При ошибках, создаем новый файл
+    except json.JSONDecodeError:
+        return []
+    except FileNotFoundError:
+        return []
+
+
+# Добавляем пользователя в файл (если ещё нет)
+def add_user(user_id: int, username: str):
+    users = load_all_users()
+    # Проверяем, нет ли уже такого ID
+    if not any(user["id"] == user_id for user in users):
+        users.append({"id": user_id, "username": username, "admin": False})
+        # Перезаписываем файл
+        with open(ALL_USERS_FILE, "w", encoding="utf-8") as f:
+            json.dump(users, f, ensure_ascii=False, indent=4)
+        return True
+    return False
+
+
+# Добавляем администратора (изменяем поле "admin" на True)
+def add_admin(user_id: int):
+    users = load_all_users()
+    for user in users:
+        if user["id"] == user_id:
+            if not user["admin"]:  # Если пользователь еще не админ
+                user["admin"] = True
+                # Перезаписываем файл с обновленными данными
+                with open(ALL_USERS_FILE, "w", encoding="utf-8") as f:
+                    json.dump(users, f, ensure_ascii=False, indent=4)
+                return True
+    return False
+
+
+# Удаляем администратора (изменяем поле "admin" на False)
+def remove_admin(user_id: int):
+    users = load_all_users()
+    for user in users:
+        if user["id"] == user_id:
+            if user["admin"]:  # Если пользователь является админом
+                user["admin"] = False
+                # Перезаписываем файл с обновленными данными
+                with open(ALL_USERS_FILE, "w", encoding="utf-8") as f:
+                    json.dump(users, f, ensure_ascii=False, indent=4)
+                return True
+    return False
+
+
+# Проверка, является ли пользователь администратором
+def is_admin(user_id: int):
+    users = load_all_users()
+    # Ищем пользователя по ID и проверяем, является ли он администратором
+    user = next((user for user in users if user["id"] == user_id), None)
+    return user and user.get("admin", False)
+
+
+# Обработчик для команд, доступных только админам
+async def admin_only(message: types.Message):
+    user_id = message.from_user.id
+    if not is_admin(user_id):
+        await message.answer("❌ Эта команда доступна только администраторам.")
+        return False
+    return True
+
+
+# Обработчик /start
+async def cmd_start(message: types.Message):
+    user = message.from_user
+    user_id = user.id
+    username = user.username  # без @
+
+    print(f"User: ID={user_id}, Username=@{username}")
+
+    # Добавляем пользователя в файл all_users.json
+    added = add_user(user_id, username)
+    if added:
+        print(f"✅ Привет! Твой ID сохранён: {user_id}")
+    else:
+        print(f"✅ С возвращением! Ты уже в базе: {user_id}")
+
+
+async def remove_admin_by_nickname(message: types.Message):
+    if not await admin_only(message):
+        return  # Если пользователь не админ, прерываем выполнение
+
+    try:
+        # Разбираем никнейм из команды
+        nickname = message.text.split()[1]  # @username
+        print(f"Команда получена: /remove_admin с никнеймом @{nickname}")
+
+        # Убираем @, если оно есть
+        if nickname.startswith("@"):
+            nickname = nickname[1:]
+        print(f"Никнейм после удаления @: {nickname}")
+
+        # Ищем пользователя по никнейму в базе всех пользователей
+        users = load_all_users()
+        print(f"Загружено {len(users)} пользователей из базы.")
+        user_info = next((user for user in users if user["username"] == nickname), None)
+
+        if user_info:
+            user_id = user_info["id"]
+            print(f"Пользователь @{nickname} найден с ID: {user_id}")
+
+            # Удаляем права администратора
+            removed = remove_admin(user_id)
+            if removed:
+                await message.answer(f"✅ Администратор @{nickname} удален.")
+            else:
+                await message.answer(
+                    f"❌ Пользователь @{nickname} не был администратором."
+                )
+        else:
+            await message.answer(
+                f"❌ Не удалось найти пользователя с никнеймом @{nickname}."
+            )
+
+    except IndexError:
+        await message.answer(
+            "❗ Пожалуйста, укажите никнейм пользователя, например: /remove_admin @username"
+        )
+    except Exception as e:
+        await message.answer(f"❌ Ошибка при удалении админа: {str(e)}")
+
+
+async def add_admin_by_nickname(message: types.Message):
+    if not await admin_only(message):
+        return
+    try:
+        # Разбираем никнейм из команды
+        nickname = message.text.split()[1]  # @username
+        print(f"Команда получена: /add_admin с никнеймом @{nickname}")
+
+        # Убираем @, если оно есть
+        if nickname.startswith("@"):
+            nickname = nickname[1:]
+        print(f"Никнейм после удаления @: {nickname}")
+
+        # Ищем пользователя по никнейму в базе всех пользователей
+        users = load_all_users()
+        print(f"Загружено {len(users)} пользователей из базы.")
+        user_info = next((user for user in users if user["username"] == nickname), None)
+
+        if user_info:
+            user_id = user_info["id"]
+            print(f"Пользователь @{nickname} найден с ID: {user_id}")
+            # Добавляем его как администратора
+            added = add_admin(user_id)
+            if added:
+                print(f"Пользователь @{nickname} добавлен в админы.")
+                await message.answer(f"✅ Админ @{nickname} добавлен.")
+            else:
+                print(f"Пользователь @{nickname} уже является администратором.")
+                await message.answer(
+                    f"❌ Этот пользователь уже является администратором."
+                )
+        else:
+            print(f"Пользователь @{nickname} не найден в базе всех пользователей.")
+            await message.answer(
+                f"❌ Не удалось найти пользователя с никнеймом @{nickname}."
+            )
+
+    except IndexError:
+        print("Ошибка: Никнейм не был указан в команде.")
+        await message.answer(
+            "❗ Пожалуйста, укажите никнейм пользователя, например: /add_admin @username"
+        )
+    except Exception as e:
+        print(f"Ошибка при добавлении админа: {str(e)}")
+        await message.answer(f"❌ Ошибка при добавлении админа: {str(e)}")
+
+
 def register_common_handler(dp: Dispatcher):
+    init_users_file()  # инициализируем файл при старте
     commands = config_loader.load_commands_config()
 
     for command_name, command_config in commands.items():
@@ -364,6 +567,9 @@ def register_common_handler(dp: Dispatcher):
     )
     dp.register_message_handler(process_email, state=Registration.waiting_for_email)
 
+    # /////////////////////////////////
+    dp.register_message_handler(add_admin_by_nickname, commands=["add_admin"])
+    dp.register_message_handler(remove_admin_by_nickname, commands=["remove_admin"])
     dp.register_message_handler(
         remove_all_registrations, commands=["remove_all_registrations"]
     )
@@ -371,8 +577,9 @@ def register_common_handler(dp: Dispatcher):
         update_webinar_datetime, commands=["update_webinar_datetime"]
     )
     dp.register_message_handler(update_webinar_link, commands=["update_webinar_link"])
-
     dp.register_message_handler(stop_reminder_command, commands=["stop_reminder"])
+    # ////////////////////////////////////////
+
     dp.register_message_handler(create_new_command, commands=["create_command"])
     dp.register_message_handler(delete_command_handler, commands=["delete_command"])
     dp.register_message_handler(echo)
