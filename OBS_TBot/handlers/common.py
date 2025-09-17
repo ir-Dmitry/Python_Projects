@@ -18,7 +18,13 @@ from .common_file import (  # Import the functions from file_utils.py
     send_commands_list,
     delete_command,
 )
-from .registration import cmd_reg, process_full_name, Registration, process_email
+from .registration import (
+    cmd_reg,
+    process_full_name,
+    Registration,
+    process_email,
+    process_simple_reg,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -560,12 +566,17 @@ def register_common_handler(dp: Dispatcher):
             dp.register_message_handler(
                 create_command_handler(command_config), regexp_commands=[f"sec_(\d+)"]
             )
-
-    dp.register_message_handler(cmd_reg, commands=["reg"])
-    dp.register_message_handler(
-        process_full_name, state=Registration.waiting_for_full_name
-    )
-    dp.register_message_handler(process_email, state=Registration.waiting_for_email)
+    """
+    Это для регистрации с указанием ФИО и email.
+    
+    # dp.register_message_handler(cmd_reg, commands=["reg"])
+    # dp.register_message_handler(
+    #     process_full_name, state=Registration.waiting_for_full_name
+    # )
+    # dp.register_message_handler(process_email, state=Registration.waiting_for_email)
+    
+    """
+    dp.register_message_handler(process_simple_reg, commands=["reg"])
 
     # /////////////////////////////////
     dp.register_message_handler(add_admin_by_nickname, commands=["add_admin"])

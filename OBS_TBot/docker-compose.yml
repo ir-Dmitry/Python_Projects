@@ -1,12 +1,10 @@
 services:
   obt-tbot:
-    build: .  # Собираем образ из текущей директории
-    image: obt-telegram-bot-image
+    # build: .  # Собираем образ из текущей директории
+    image: yca4/obt-telegram-bot-image:latest
     container_name: telegram-bot
     restart: unless-stopped
     env_file:
-      - .env  # <-- вот это лучше, чем вручную environment
+      - .env
     volumes:
       - ./data:/app/data
-    ports:
-      - "8080:8080"  # если у тебя есть веб-интерфейс или webhook

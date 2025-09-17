@@ -31,6 +31,7 @@ class Registration(StatesGroup):
 
 async def cmd_reg(message: types.Message):
     await message.answer("📝 Начинаем регистрацию!\n\nВведите ваше ФИО:")
+
     await Registration.waiting_for_full_name.set()  # Устанавливаем состояние
 
 
@@ -121,6 +122,61 @@ def save_registration(user_id: int, full_name: str, email: str):
             "✅ <b>Регистрация завершена!</b>\n\n"
             f"📌 ФИО: {full_name}\n"
             f"✉️ Email: {email}\n\n"
+            f"🗓 Дата вебинара: {tmp_time.date()}. \n🕰 Время: {tmp_time.strftime('%H:%M')}.\nНапоминание о вебинаре придет вовремя."
+        )
+    except Exception as e:
+        print(f"Ошибка записи в файл: {e}")
+        return (
+            "❌ Не удалось сохранить данные.\n"
+            "Пожалуйста, попробуйте ещё раз или свяжитесь с поддержкой."
+        )
+
+
+"""
+    /////////////////////////////////////////////////////////////////////////////////////
+    Начало без ФИО и email
+"""
+
+
+async def process_simple_reg(message: types.Message):
+
+    user_id = message.from_user.id
+
+    # 💾 Здесь сохраняй в JSON, БД и т.п.
+    success = save_registration_without_full_name(user_id)
+
+    await message.answer(success, parse_mode="HTML")
+
+
+def save_registration_without_full_name(user_id: int):
+    """
+    Сохраняет пользователя и возвращает HTML-сообщение для отправки пользователю.
+    """
+    users = load_jsons("data/users.json")
+
+    # Проверка на дубликат
+    if any(user["user_id"] == user_id for user in users):
+        return (
+            "⚠️ <b>Вы уже зарегистрированы</b> на вебинар.\n\n"
+            "Не волнуйтесь — напоминание придет вовремя!"
+        )
+
+    # Добавляем нового пользователя
+    pers = {
+        "user_id": user_id,
+        "registered_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    users.append(pers)
+
+    # 🚀 Отправляем данные в Google Таблицу
+    send_to_google_sheets(pers)
+
+    try:
+        tmp_time = get_webinar_time()
+        with open("data/users.json", "w", encoding="utf-8") as f:
+            json.dump(users, f, ensure_ascii=False, indent=2)
+        return (
+            "✅ <b>Регистрация завершена!</b>\n\n"
             f"🗓 Дата вебинара: {tmp_time.date()}. \n🕰 Время: {tmp_time.strftime('%H:%M')}.\nНапоминание о вебинаре придет вовремя."
         )
     except Exception as e:

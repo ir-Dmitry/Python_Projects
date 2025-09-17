@@ -6,7 +6,7 @@ from typing import Union
 from aiogram import types
 from config_loader import ConfigLoader
 from aiogram.dispatcher import Dispatcher
-from .registration import cmd_reg
+from .registration import cmd_reg, process_simple_reg
 from keyboards import create_keyboard_from_file
 
 logger = logging.getLogger(__name__)
@@ -133,7 +133,8 @@ async def handle_callback(
                     )
 
                 elif button.get("response_type") == "reg":
-                    await cmd_reg(callback_query.message)
+                    # await cmd_reg(callback_query.message)
+                    await process_simple_reg(callback_query.message)
 
                 elif button.get("response_type") == "script":
                     script_path = button["path"]
