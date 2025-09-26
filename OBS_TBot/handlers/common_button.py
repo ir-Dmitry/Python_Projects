@@ -134,7 +134,7 @@ async def handle_callback(
 
                 elif button.get("response_type") == "reg":
                     # await cmd_reg(callback_query.message)
-                    await process_simple_reg(callback_query.message)
+                    await process_simple_reg(callback_query)
 
                 elif button.get("response_type") == "script":
                     script_path = button["path"]

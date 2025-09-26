@@ -72,3 +72,12 @@ def load_jsons(file_path="data/default.json"):
     except Exception as e:
         print(f"Произошла ошибка при загрузке файла: {e}")
         return None
+
+
+def save_jsons(filename, data):
+    try:
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        print(f"✅ Данные сохранены в {filename}")
+    except Exception as e:
+        print(f"❌ Ошибка записи {filename}: {e}")

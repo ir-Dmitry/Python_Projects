@@ -1,6 +1,9 @@
 # handlers/registration.py
 import re
+import os
 import json
+import logging
+from typing import Union  # ← добавь этот импорт
 from aiogram import types
 from datetime import datetime
 from zoneinfo import ZoneInfo  # работает только с Python 3.9+
@@ -9,6 +12,21 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from .google_sheets import send_to_google_sheets
 from .file_reader import load_jsons, get_webinar_time
+
+# Создаём папку для логов
+os.makedirs("logs", exist_ok=True)
+
+# Настраиваем логгер
+logging.basicConfig(
+    level=logging.INFO,  # Уровень: INFO и выше (INFO, WARNING, ERROR, CRITICAL)
+    format="%(asctime)s | %(levelname)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[
+        logging.FileHandler("logs/registration.log", encoding="utf-8"),
+        logging.StreamHandler(),  # Вывод в консоль
+    ],
+)
+logger = logging.getLogger(__name__)
 
 moscow_time = datetime.now(ZoneInfo("Europe/Moscow"))
 print(f"Московское время: {moscow_time}")
@@ -138,21 +156,36 @@ def save_registration(user_id: int, full_name: str, email: str):
 """
 
 
-async def process_simple_reg(message: types.Message):
+async def process_simple_reg(obj: Union[types.Message, types.CallbackQuery]):
+    # Получаем пользователя — в обоих случаях поле .from_user
+    user = obj.from_user
+    user_id = user.id
 
-    user_id = message.from_user.id
+    print(f"[DEBUG] process_simple_reg: ID={user_id}, Username=@{user.username}")
 
-    # 💾 Здесь сохраняй в JSON, БД и т.п.
     success = save_registration_without_full_name(user_id)
 
-    await message.answer(success, parse_mode="HTML")
+    # Определяем, куда отвечать
+    if isinstance(obj, types.CallbackQuery):
+        await obj.answer()  # Убираем "часики" после нажатия
+        target_message = obj.message
+    else:  # Message
+        target_message = obj
+
+    await target_message.answer(success, parse_mode="HTML")
 
 
 def save_registration_without_full_name(user_id: int):
     """
     Сохраняет пользователя и возвращает HTML-сообщение для отправки пользователю.
     """
-    users = load_jsons("data/users.json")
+    path_users = "data/users.json"
+    # Проверяем, существует ли файл
+    if not os.path.exists(path_users):
+        with open(path_users, "w", encoding="utf-8") as f:
+            json.dump([], f, ensure_ascii=False, indent=2)
+
+    users = load_jsons(path_users)
 
     # Проверка на дубликат
     if any(user["user_id"] == user_id for user in users):
@@ -165,23 +198,66 @@ def save_registration_without_full_name(user_id: int):
     pers = {
         "user_id": user_id,
         "registered_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "is_blocked": False,
     }
-    users.append(pers)
-
-    # 🚀 Отправляем данные в Google Таблицу
-    send_to_google_sheets(pers)
 
     try:
+        users.append(pers)
         tmp_time = get_webinar_time()
         with open("data/users.json", "w", encoding="utf-8") as f:
             json.dump(users, f, ensure_ascii=False, indent=2)
+
+        # 🚀 Отправляем данные в Google Таблицу
+        send_to_google_sheets(pers)
+
         return (
             "✅ <b>Регистрация завершена!</b>\n\n"
             f"🗓 Дата вебинара: {tmp_time.date()}. \n🕰 Время: {tmp_time.strftime('%H:%M')}.\nНапоминание о вебинаре придет вовремя."
         )
-    except Exception as e:
-        print(f"Ошибка записи в файл: {e}")
+    except AttributeError:
+        logger.error(
+            "Переменная 'users' не является списком или не имеет метода append"
+        )
         return (
-            "❌ Не удалось сохранить данные.\n"
-            "Пожалуйста, попробуйте ещё раз или свяжитесь с поддержкой."
+            "❌ Ошибка: внутренняя структура данных повреждена.\n"
+            "Попробуйте позже или свяжитесь с поддержкой."
+        )
+
+    except OSError as e:
+        logger.error(f"Системная ошибка при работе с файлом: {e}")
+        return (
+            "❌ Ошибка файловой системы при сохранении данных.\n"
+            "Попробуйте позже или свяжитесь с поддержкой."
+        )
+
+    except json.JSONDecodeError as e:
+        logger.error(f"Ошибка формата JSON при чтении/записи: {e}")
+        return (
+            "❌ Ошибка при обработке данных пользователей.\n"
+            "Пожалуйста, свяжитесь с поддержкой."
+        )
+
+    except TimeoutError:
+        logger.error("Таймаут при подключении к Google Sheets")
+        return (
+            "✅ Данные сохранены локально, но не отправлены в Google Таблицу.\n"
+            "Пожалуйста, попробуйте позже или свяжитесь с поддержкой."
+        )
+
+    except ConnectionError:
+        logger.error(
+            "Ошибка подключения к Google Sheets (нет интернета или сервис недоступен)"
+        )
+        return (
+            "✅ Данные сохранены локально.\n"
+            "Не удалось отправить в Google Таблицу — временные проблемы с подключением.\n"
+            "Пожалуйста, попробуйте позже или свяжитесь с поддержкой."
+        )
+
+    except Exception as e:
+        # Отлавливаем все остальные неожиданные ошибки
+        logger.error(f"Неизвестная ошибка: {e}", exc_info=True)
+        return (
+            "❌ Произошла непредвиденная ошибка.\n"
+            "Пожалуйста, попробуйте позже или свяжитесь с поддержкой."
         )
