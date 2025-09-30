@@ -15,24 +15,17 @@ from .file_reader import (
 )
 
 active_tasks = {}
+TIME_MAP = {
+    "days": timedelta(days=1),
+    "hours": timedelta(hours=1),
+    "minutes": timedelta(minutes=1),
+    "seconds": timedelta(seconds=1),
+}
 
 
 def calculate_reminder_time(webinar_time: datetime, relative_time: str) -> datetime:
-    """
-    Рассчитывает точное время для напоминания на основе времени вебинара и относительного времени.
-    """
-    time_map = {
-        "days": timedelta(days=1),
-        "hours": timedelta(hours=1),
-        "minutes": timedelta(minutes=1),
-        "seconds": timedelta(seconds=1),
-    }
-
     amount, unit = relative_time.split()
-    amount = int(amount)
-
-    # Используем словарь для получения timedelta и вычисляем время напоминания
-    return webinar_time - time_map[unit] * amount
+    return webinar_time - TIME_MAP[unit] * int(amount)
 
 
 async def update_user_block_status(bot: Bot):
@@ -61,14 +54,13 @@ async def update_user_block_status(bot: Bot):
             print(f"⚠️ Some ошибка {user_id}: {type(e).__name__}: {e}")
             continue  # Переходим к следующему
 
-        # 🔄 сразу отправляем обновлённого пользователя в Google Sheets
+        updated_count += 1
+        await asyncio.sleep(0.05)  # Анти-спам от Telegram
+
     try:
         send_data_to_google_sheets(users)
     except Exception as e:
         print(f"⚠️ Ошибка отправки в Google Sheets: {e}")
-
-        updated_count += 1
-        await asyncio.sleep(0.05)  # Анти-лимит от Telegram
 
     save_jsons("data/users.json", users)
     print(f"📊 Статус обновлён для {updated_count} пользователей.")
@@ -88,7 +80,7 @@ async def send_reminder_to_users(bot: Bot, text: str, include_link: bool = False
 
     for user in users:
         user_id = user.get("user_id")
-        if not user_id or user.get("available", True):
+        if not user_id or not user.get("available", False):
             continue
 
         try:
@@ -142,7 +134,7 @@ async def schedule_webinar_reminder(bot: Bot):
         now = datetime.now(get_timezone())
 
 
-async def periodic_task(bot, interval: int = 60):
+async def periodic_task(bot, interval: int = 10):
     """
     Периодическая задача с фиксированной задержкой (например, раз в минуту).
     """
@@ -161,7 +153,7 @@ async def start_reminder(bot):
 
     task = asyncio.create_task(schedule_webinar_reminder(bot))
     active_tasks["webinar_reminder"] = task
-    task = asyncio.create_task(periodic_task(bot, 60))
+    task = asyncio.create_task(periodic_task(bot, 86400))
     active_tasks["periodic_task"] = task
 
     print("✅ Напоминание запущено.")

@@ -1,10 +1,24 @@
 # handlers/google_sheets.py
-import time
+import os
 import gspread
-from typing import Union, List, Dict
+import logging
+from typing import Union
 from requests.exceptions import HTTPError
 from google.auth.exceptions import GoogleAuthError
 from google.oauth2.service_account import Credentials
+
+# Логи
+os.makedirs("logs", exist_ok=True)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[
+        logging.FileHandler("logs/google_sheets.log", encoding="utf-8"),
+        logging.StreamHandler(),
+    ],
+)
+logger = logging.getLogger(__name__)
 
 CREDENTIALS_FILE = "data/credentials.json"
 scope = [
@@ -13,6 +27,7 @@ scope = [
 ]
 
 CLIENT = None
+FIELDS_ORDER = ["user_id", "registered_at", "available"]
 
 
 def authorize_google_sheets():
@@ -22,20 +37,19 @@ def authorize_google_sheets():
             CREDENTIALS_FILE, scopes=scope
         )
         CLIENT = gspread.authorize(credentials)
+        logger.info("Авторизация Google Sheets выполнена успешно.")
 
 
 def is_google_sheets_connected():
     try:
         global CLIENT
         spreadsheet = CLIENT.open("Регистрация на вебинар")
+        logger.info("Подключение к Google Sheets успешно.")
         return True
     except (HTTPError, GoogleAuthError) as e:
-        print(f"Ошибка подключения: {e}")
+        logger.error(f"Ошибка подключения к Google Sheets: {e}", exc_info=True)
         CLIENT = None
         return False
-
-
-FIELDS_ORDER = ["user_id", "registered_at", "available"]
 
 
 def send_data_to_google_sheets(data: Union[dict, list[dict]]):
@@ -44,119 +58,45 @@ def send_data_to_google_sheets(data: Union[dict, list[dict]]):
     Обновляет существующие строки по user_id и добавляет новые.
     Принимает словарь или список словарей.
     """
-    global CLIENT
-    if CLIENT is None or not is_google_sheets_connected():
-        authorize_google_sheets()
+    try:
+        global CLIENT
+        if CLIENT is None or not is_google_sheets_connected():
+            authorize_google_sheets()
 
-    worksheet = CLIENT.open("Регистрация на вебинар").sheet1
+        worksheet = CLIENT.open("Регистрация на вебинар").sheet1
 
-    if isinstance(data, dict):
-        data = [data]
+        if isinstance(data, dict):
+            data = [data]
 
-    records = worksheet.get_all_records()
-    id_to_row = {str(r.get("user_id")): i + 2 for i, r in enumerate(records)}
+        records = worksheet.get_all_records()
+        id_to_row = {str(r.get("user_id")): i + 2 for i, r in enumerate(records)}
 
-    new_rows = []
-    for user in data:
-        row_data = [user.get(f, "") for f in FIELDS_ORDER]
-        uid = str(user.get("user_id"))
-        if uid in id_to_row:
-            worksheet.update(f"A{id_to_row[uid]}:C{id_to_row[uid]}", [row_data])
-            print(f"🔄 Обновлено: user_id={uid}")
-        else:
-            new_rows.append(row_data)
+        new_rows = []
+        for user in data:
+            row_data = [user.get(f, "") for f in FIELDS_ORDER]
+            uid = str(user.get("user_id"))
+            if uid in id_to_row:
+                worksheet.update(f"A{id_to_row[uid]}:C{id_to_row[uid]}", [row_data])
+                logger.info(f"Обновлена запись в Google Sheets: user_id={uid}")
+            else:
+                new_rows.append(row_data)
 
-    for row in new_rows:
-        worksheet.append_row(row)
-    if new_rows:
-        print(f"✅ Добавлено {len(new_rows)} новых строк")
+        if new_rows:
+            worksheet.append_rows(new_rows)
+            logger.info(f"Добавлено {len(new_rows)} новых строк в Google Sheets")
 
-    # def send_users_to_google_sheets(users: list[dict]):
-    #     """
-    #     Массовая синхронизация пользователей с Google Sheets.
-    #     Полностью перезаписывает данные (кроме шапки).
-    #     """
-    #     global CLIENT
-    #     if CLIENT is None or not is_google_sheets_connected():
-    #         print("Проверка соединения с Google Sheets.")
-    #         authorize_google_sheets()
-
-    #     worksheet = CLIENT.open("Регистрация на вебинар").sheet1
-
-    #     # готовим список строк
-    #     rows = [[u.get(field, "") for field in FIELDS_ORDER] for u in users]
-
-    #     # очищаем всё кроме заголовков и расширяем под новые данные
-    #     worksheet.resize(len(rows) + 1)  # +1 строка под заголовки
-
-    #     # записываем массив (со второй строки)
-    #     if rows:
-    #         worksheet.update(f"A2:C{len(rows)+1}", rows)
-
-    #     print(f"✅ Обновлено {len(rows)} строк в Google Sheets")
-
-
-# def send_to_google_sheets(pers: dict):
-#     max_attempts = 3
-#     for attempt in range(max_attempts):
-#         try:
-#             global CLIENT
-#             if CLIENT is None or not is_google_sheets_connected():
-#                 print("Проверка соединения с Google Sheets.")
-#                 authorize_google_sheets()
-
-#             spreadsheet = CLIENT.open("Регистрация на вебинар")
-#             worksheet = spreadsheet.sheet1
-
-#             # ищем user_id в таблице
-#             records = worksheet.get_all_records()
-#             row_index = None
-#             for i, row in enumerate(records, start=2):
-#                 if str(row.get("user_id")) == str(pers["user_id"]):
-#                     row_index = i
-#                     break
-
-#             row_data = [pers.get(field, "") for field in FIELDS_ORDER]
-
-#             if row_index:
-#                 worksheet.update(f"A{row_index}:C{row_index}", [row_data])
-#                 print(f"🔄 Данные обновлены для user_id={pers['user_id']}")
-#             else:
-#                 worksheet.append_row(row_data)
-#                 print("✅ Добавлена новая строка")
-
-#             break
-
-#         except (HTTPError, GoogleAuthError) as e:
-#             print(
-#                 f"Ошибка при отправке данных: {e}. Попытка {attempt + 1} из {max_attempts}"
-#             )
-#             if attempt == max_attempts - 1:
-#                 raise
-#             time.sleep(2)
-
-
-# def send_to_google_sheets(pers: dict):
-#     max_attempts = 3
-#     for attempt in range(max_attempts):
-#         try:
-#             global CLIENT
-#             if CLIENT is None or not is_google_sheets_connected():
-#                 print("Проверка соединения с Google Sheets.")
-#                 authorize_google_sheets()
-
-#             spreadsheet = CLIENT.open("Регистрация на вебинар")
-#             worksheet = spreadsheet.sheet1
-#             worksheet.append_row([*pers.values()])
-#             print("Отправка данных в гугл таблицу прошла успешно! ✅")
-#             break
-#         except (HTTPError, GoogleAuthError) as e:
-#             print(
-#                 f"Ошибка при отправке данных: {e}. Попытка {attempt + 1} из {max_attempts}"
-#             )
-#             if attempt == max_attempts - 1:
-#                 raise
-#             time.sleep(2)
+    except TimeoutError as e:
+        logger.error(f"TimeoutError при работе с Google Sheets: {e}", exc_info=True)
+        return "timeout"
+    except ConnectionError as e:
+        logger.error(f"ConnectionError при работе с Google Sheets: {e}", exc_info=True)
+        return "connection_error"
+    except (HTTPError, GoogleAuthError) as e:
+        logger.error(f"Ошибка Google API: {e}", exc_info=True)
+        return "api_error"
+    except Exception as e:
+        logger.exception(f"Неизвестная ошибка при работе с Google Sheets: {e}")
+        return "unknown_error"
 
 
 # dov = {

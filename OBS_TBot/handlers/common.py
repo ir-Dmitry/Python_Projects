@@ -18,13 +18,7 @@ from .common_file import (  # Import the functions from file_utils.py
     send_commands_list,
     delete_command,
 )
-from .registration import (
-    cmd_reg,
-    process_full_name,
-    Registration,
-    process_email,
-    process_simple_reg,
-)
+from .registration import process_simple_reg
 
 logger = logging.getLogger(__name__)
 

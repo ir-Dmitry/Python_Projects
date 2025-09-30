@@ -6,7 +6,7 @@ from typing import Union
 from aiogram import types
 from config_loader import ConfigLoader
 from aiogram.dispatcher import Dispatcher
-from .registration import cmd_reg, process_simple_reg
+from .registration import process_simple_reg
 from keyboards import create_keyboard_from_file
 
 logger = logging.getLogger(__name__)
