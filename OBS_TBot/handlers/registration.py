@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo  # работает только с Python 3.9+
 from aiogram.dispatcher import FSMContext
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters.state import State, StatesGroup
-from .google_sheets import send_to_google_sheets
+from .google_sheets import send_data_to_google_sheets
 from .file_reader import load_jsons, get_webinar_time
 
 # Создаём папку для логов
@@ -130,7 +130,7 @@ def save_registration(user_id: int, full_name: str, email: str):
     users.append(pers)
 
     # 🚀 Отправляем данные в Google Таблицу
-    send_to_google_sheets(pers)
+    send_data_to_google_sheets(pers)
 
     try:
         tmp_time = get_webinar_time()
@@ -198,7 +198,7 @@ def save_registration_without_full_name(user_id: int):
     pers = {
         "user_id": user_id,
         "registered_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "is_blocked": False,
+        "available": True,
     }
 
     try:
@@ -208,7 +208,7 @@ def save_registration_without_full_name(user_id: int):
             json.dump(users, f, ensure_ascii=False, indent=2)
 
         # 🚀 Отправляем данные в Google Таблицу
-        send_to_google_sheets(pers)
+        send_data_to_google_sheets(pers)
 
         return (
             "✅ <b>Регистрация завершена!</b>\n\n"

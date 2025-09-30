@@ -5,6 +5,7 @@ import asyncio
 from aiogram import Bot
 from datetime import datetime, timedelta
 from aiogram.utils.exceptions import BotBlocked, ChatNotFound, UserDeactivated
+from .google_sheets import send_data_to_google_sheets
 from .file_reader import (
     save_jsons,
     load_jsons,
@@ -36,7 +37,7 @@ def calculate_reminder_time(webinar_time: datetime, relative_time: str) -> datet
 
 async def update_user_block_status(bot: Bot):
     """
-    Один раз обновляет статус is_blocked для всех пользователей.
+    Один раз обновляет статус available для всех пользователей.
     """
     users = load_jsons("data/users.json")
     if not users:
@@ -51,14 +52,20 @@ async def update_user_block_status(bot: Bot):
 
         try:
             await bot.send_chat_action(user_id, "choose_sticker")
-            user["is_blocked"] = False
+            user["available"] = True
             print(f"✅ Доступен: {user_id}")
         except (BotBlocked, ChatNotFound, UserDeactivated) as e:
-            user["is_blocked"] = True
+            user["available"] = False
             print(f"❌ Не доступен: {user_id} | {e}")
         except Exception as e:
             print(f"⚠️ Some ошибка {user_id}: {type(e).__name__}: {e}")
             continue  # Переходим к следующему
+
+        # 🔄 сразу отправляем обновлённого пользователя в Google Sheets
+    try:
+        send_data_to_google_sheets(users)
+    except Exception as e:
+        print(f"⚠️ Ошибка отправки в Google Sheets: {e}")
 
         updated_count += 1
         await asyncio.sleep(0.05)  # Анти-лимит от Telegram
@@ -81,7 +88,7 @@ async def send_reminder_to_users(bot: Bot, text: str, include_link: bool = False
 
     for user in users:
         user_id = user.get("user_id")
-        if not user_id or user.get("is_blocked", False):
+        if not user_id or user.get("available", True):
             continue
 
         try:
@@ -135,130 +142,15 @@ async def schedule_webinar_reminder(bot: Bot):
         now = datetime.now(get_timezone())
 
 
-# async def schedule_webinar_reminder(bot: Bot):
-#     """
-#     Запускает напоминания до вебинара, используя данные из JSON.
-#     """
-#     webinar_time = get_webinar_time()
-#     now = datetime.now(get_timezone())
-#     reminders = load_jsons("data/reminders.json")  # Загружаем напоминания из JSON файла
-
-#     for reminder in reminders:
-#         reminder_time = calculate_reminder_time(webinar_time, reminder["time"])
-#         delay = (reminder_time - now).total_seconds()
-
-#         if delay > 0:
-
-#             msg = f"⏳ Напоминание {reminder['label']} запланировано на {reminder_time} (через {delay:.0f} сек)"
-#             print(msg)
-
-#             await asyncio.sleep(delay)  # Ожидание до времени напоминания
-
-#             users = load_jsons("data/users.json")
-#             if users is None:
-#                 print("Ошибка при загрузке данных пользователей.")
-#                 continue
-
-#             user_ids = [user["user_id"] for user in users if "user_id" in user]
-
-#             if not user_ids:
-#                 print("📭 Нет зарегистрированных пользователей.")
-#                 continue
-
-#             print(
-#                 f"📨 Рассылка {reminder['label']} для {len(user_ids)} пользователей..."
-#             )
-
-#             # /////////////////////////////////////////////////////////////
-#             async def check_user_activity(bot, user_id):
-#                 """
-#                 Проверяет, не заблокировал ли пользователь бота.
-#                 Возвращает False, если заблокирован или недоступен.
-#                 """
-#                 try:
-#                     # Самое незаметное действие
-#                     await bot.send_chat_action(user_id, "choose_sticker")
-#                     return False  # Не заблокирован
-#                 except BotBlocked:
-#                     return True  # Заблокирован
-#                 except (ChatNotFound, UserDeactivated):
-#                     return True  # Пользователь удалён или никогда не запускал бота
-#                 except Exception as e:
-#                     print(f"Ошибка при проверке {user_id}: {e}")
-#                     return True  # На всякий случай считаем, что недоступен
-
-#             # Проходим по каждому
-#             for user in users:
-#                 user_id = user.get("user_id")
-#                 if not user_id:
-#                     continue
-
-#                 print(f"Проверяю пользователя: {user_id}...")
-
-#                 is_blocked = await check_user_activity(bot, user_id)
-
-#                 # Добавляем или обновляем статус
-#                 user["is_blocked"] = is_blocked
-
-#                 if is_blocked:
-#                     print(f"❌ Пользователь {user_id} заблокировал бота!")
-#                 else:
-#                     print(f"✅ Пользователь {user_id} активен.")
-
-#                 # Сохраняем обновлённый список
-#             save_jsons("data/users.json", users)
-#             print("✅ Проверка завершена. Статусы обновлены.")
-#             # /////////////////////////////////////////////////////////////
-
-#             if reminder["last"] == True:
-#                 print("Ссылка: ", get_webinar_link())
-#             else:
-#                 print("Пусто")
-
-#             for user_id in user_ids:
-#                 try:
-#                     await bot.send_message(
-#                         chat_id=user_id,
-#                         text=(
-#                             reminder["text"] + get_webinar_link()
-#                             if reminder["last"] == True
-#                             else ""
-#                         ),
-#                         parse_mode="HTML",
-#                     )
-#                     print(f"✅ Отправлено: {user_id}")
-#                 except Exception as e:
-#                     print(f"❌ Ошибка для {user_id}: {e}")
-#                 await asyncio.sleep(0.05)  # анти-спам
-
-#             # Обновляем текущее время после сна
-#             now = datetime.now(get_timezone())
-#             print(f"Напоминание '{reminder['label']}' отправлено.")
-#         else:
-#             print(
-#                 f"Напоминание '{reminder['label']}' пропущено, так как время уже прошло."
-#             )
-
-
-# async def start_reminder(bot):
-#     if "webinar_reminder" in active_tasks:
-#         print("Напоминание уже запущено.")
-#         return
-#     task = asyncio.create_task(schedule_webinar_reminder(bot))
-#     active_tasks["webinar_reminder"] = task
-
-#     print("✅ Напоминание запущено.")
-
-
-# async def stop_reminder():
-#     task = active_tasks.get("webinar_reminder")
-#     if task:
-#         task.cancel()
-#         try:
-#             await task
-#         except asyncio.CancelledError:
-#             print("❌ Напоминание отменено.")
-#         del active_tasks["webinar_reminder"]
+async def periodic_task(bot, interval: int = 60):
+    """
+    Периодическая задача с фиксированной задержкой (например, раз в минуту).
+    """
+    while True:
+        print(f"⏰ Периодическая задача {datetime.now()}")
+        # тут твоя логика (например, проверка или обновление статусов)
+        await update_user_block_status(bot)
+        await asyncio.sleep(interval)  # ждать фиксированное время
 
 
 async def start_reminder(bot):
@@ -269,6 +161,9 @@ async def start_reminder(bot):
 
     task = asyncio.create_task(schedule_webinar_reminder(bot))
     active_tasks["webinar_reminder"] = task
+    task = asyncio.create_task(periodic_task(bot, 60))
+    active_tasks["periodic_task"] = task
+
     print("✅ Напоминание запущено.")
 
 
