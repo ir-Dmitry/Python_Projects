@@ -11,7 +11,7 @@ from config_loader import ConfigLoader
 from aiogram.dispatcher import Dispatcher
 from .file_reader import load_jsons
 from .common_button import send_keyboard
-from .reminder import stop_reminder, start_reminder
+from .reminder import stop_reminders, start_reminders
 from .common_file import (  # Import the functions from file_utils.py
     send_file_section,
     send_sections_list,
@@ -19,8 +19,9 @@ from .common_file import (  # Import the functions from file_utils.py
     delete_command,
 )
 from .registration import process_simple_reg
+from .logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger("common", "common.log")
 
 # --- Инициализация ConfigLoader ---
 config_loader = ConfigLoader()
@@ -274,8 +275,8 @@ async def update_webinar_link(message: types.Message):
         os.environ["WEBINAR_LINK"] = new_link
 
         # Перезапускаем напоминание
-        await stop_reminder()
-        await start_reminder(message.bot)
+        await stop_reminders()
+        await start_reminders(message.bot)
 
         await message.reply(
             f"✅ Ссылка на вебинар успешно обновлена:\n{new_link}",
@@ -333,8 +334,8 @@ async def update_webinar_datetime(message: types.Message):
             "%Y-%m-%d %H:%M:%S"
         )
         # Перезапуск напоминания
-        await stop_reminder()
-        await start_reminder(message.bot)
+        await stop_reminders()
+        await start_reminders(message.bot)
 
         # Подтверждение успешного обновления
         await message.reply(
@@ -346,10 +347,10 @@ async def update_webinar_datetime(message: types.Message):
         await message.reply(f"❌ Произошла ошибка при обновлении даты и времени: {e}")
 
 
-async def stop_reminder_command(message: types.Message):
+async def stop_reminders_command(message: types.Message):
     if not await admin_only(message):
         return
-    await stop_reminder()
+    await stop_reminders()
     await message.reply("❌ Напоминание остановлено.")
 
 
@@ -582,7 +583,7 @@ def register_common_handler(dp: Dispatcher):
         update_webinar_datetime, commands=["update_webinar_datetime"]
     )
     dp.register_message_handler(update_webinar_link, commands=["update_webinar_link"])
-    dp.register_message_handler(stop_reminder_command, commands=["stop_reminder"])
+    dp.register_message_handler(stop_reminders_command, commands=["stop_reminders"])
     # ////////////////////////////////////////
 
     dp.register_message_handler(create_new_command, commands=["create_command"])

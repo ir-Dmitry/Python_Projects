@@ -8,8 +8,8 @@ logger = logging.getLogger(__name__)
 class ConfigLoader:
     """Класс для загрузки конфигураций из JSON файлов."""
 
-    COMMANDS_CONFIG_PATH = "./handlers/commands_config.json"
-    BUTTONS_CONFIG_PATH = "./keyboards/buttons_config.json"
+    COMMANDS_CONFIG_PATH = "./data/commands_config.json"
+    BUTTONS_CONFIG_PATH = "./data/buttons_config.json"
 
     def __init__(self):
         pass  # No need to pass paths anymore

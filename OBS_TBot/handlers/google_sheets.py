@@ -7,18 +7,10 @@ from requests.exceptions import HTTPError
 from google.auth.exceptions import GoogleAuthError
 from google.oauth2.service_account import Credentials
 
-# Логи
-os.makedirs("logs", exist_ok=True)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    handlers=[
-        logging.FileHandler("logs/google_sheets.log", encoding="utf-8"),
-        logging.StreamHandler(),
-    ],
-)
-logger = logging.getLogger(__name__)
+from .logger import get_logger
+
+logger = get_logger("google_sheets", "google_sheets.log")
+
 
 CREDENTIALS_FILE = "data/credentials.json"
 scope = [
@@ -84,6 +76,8 @@ def send_data_to_google_sheets(data: Union[dict, list[dict]]):
         if new_rows:
             worksheet.append_rows(new_rows)
             logger.info(f"Добавлено {len(new_rows)} новых строк в Google Sheets")
+
+        return "success"
 
     except TimeoutError as e:
         logger.error(f"TimeoutError при работе с Google Sheets: {e}", exc_info=True)
