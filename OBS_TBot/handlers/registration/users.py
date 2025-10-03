@@ -2,19 +2,18 @@ import os
 import json
 from datetime import datetime
 from typing import Optional, Dict
-from ..file_reader import load_jsons
+from ..file_reader import load_json, save_json
 
 
 def load_users(path="data/users.json") -> list:
     if not os.path.exists(path):
         with open(path, "w", encoding="utf-8") as f:
-            json.dump([], f, ensure_ascii=False, indent=2)
-    return load_jsons(path)
+            f.write("[]")
+    return load_json(path, [])
 
 
-def save_users(users: list, path="data/users.json"):
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(users, f, ensure_ascii=False, indent=2)
+def save_users(path, users):
+    save_json(path, users, [])
 
 
 def add_user(user_id: int, path="data/users.json") -> Optional[Dict]:
@@ -27,5 +26,5 @@ def add_user(user_id: int, path="data/users.json") -> Optional[Dict]:
         "available": True,
     }
     users.append(user)
-    save_users(users, path)
+    save_users(path, users)
     return user

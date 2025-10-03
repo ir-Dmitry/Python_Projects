@@ -11,7 +11,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from .google_sheets import send_data_to_google_sheets
-from .file_reader import load_jsons, get_webinar_time
+from .file_reader import load_json, get_webinar_time
 
 # Создаём папку для логов
 os.makedirs("logs", exist_ok=True)
@@ -111,7 +111,7 @@ def save_registration(user_id: int, full_name: str, email: str):
     """
     Сохраняет пользователя и возвращает HTML-сообщение для отправки пользователю.
     """
-    users = load_jsons("data/users.json")
+    users = load_json("data/users.json", [])
 
     # Проверка на дубликат
     if any(user["user_id"] == user_id for user in users):
@@ -185,7 +185,7 @@ def save_registration_without_full_name(user_id: int):
         with open(path_users, "w", encoding="utf-8") as f:
             json.dump([], f, ensure_ascii=False, indent=2)
 
-    users = load_jsons(path_users)
+    users = load_json(path_users, [])
 
     # Проверка на дубликат
     if any(user["user_id"] == user_id for user in users):

@@ -4,14 +4,14 @@ from aiogram import Bot
 from ..scheduler import TaskScheduler
 from .time_utils import calculate_reminder_time
 from .users import update_user_block_status, send_reminder_to_users
-from ..file_reader import load_jsons, get_webinar_time, get_timezone
+from ..file_reader import load_json, get_webinar_time, get_timezone
 
 scheduler = TaskScheduler()
 
 
 async def schedule_webinar_reminder(bot: Bot):
     webinar_time = get_webinar_time()
-    reminders = load_jsons("data/reminders.json")
+    reminders = load_json("data/reminders.json", [])
 
     if not reminders:
         print("📭 Нет напоминаний для планирования.")

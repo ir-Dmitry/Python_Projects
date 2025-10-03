@@ -2,11 +2,11 @@ import asyncio
 from aiogram import Bot
 from aiogram.utils.exceptions import BotBlocked, ChatNotFound, UserDeactivated
 from ..google_sheets import send_data_to_google_sheets
-from ..file_reader import save_jsons, load_jsons, get_webinar_link
+from ..file_reader import save_json, load_json, get_webinar_link
 
 
 async def update_user_block_status(bot: Bot):
-    users = load_jsons("data/users.json")
+    users = load_json("data/users.json", [])
     if not users:
         print("📭 Нет пользователей для обновления статуса.")
         return
@@ -36,12 +36,12 @@ async def update_user_block_status(bot: Bot):
     except Exception as e:
         print(f"⚠️ Ошибка отправки в Google Sheets: {e}")
 
-    save_jsons("data/users.json", users)
+    save_json("data/users.json", users, [])
     print(f"📊 Статус обновлён для {updated_count} пользователей.")
 
 
 async def send_reminder_to_users(bot: Bot, text: str, include_link: bool = False):
-    users = load_jsons("data/users.json")
+    users = load_json("data/users.json", [])
     if not users:
         print("📭 Нет пользователей для рассылки.")
         return 0
